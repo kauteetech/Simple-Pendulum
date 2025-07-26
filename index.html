@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Simple Pendulum: Dynamics & Control</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js CDN for 3D rendering -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        /* Custom CSS for better styling and responsiveness */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+            color: #333;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .card {
+            background-color: #fff;
+            border-radius: 15px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.08);
+            padding: 30px;
+            margin-bottom: 25px;
+        }
+        h1, h2, h3 {
+            color: #1a202c;
+            font-weight: 700;
+            margin-bottom: 15px;
+        }
+        h1 { font-size: 2.5rem; }
+        h2 { font-size: 2rem; }
+        h3 { font-size: 1.5rem; }
+
+        canvas {
+            display: block;
+            background-color: #e2e8f0;
+            border-radius: 10px;
+            margin: 0 auto;
+            border: 1px solid #cbd5e0;
+        }
+        .slider-group {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .slider-group label {
+            width: 120px;
+            font-weight: 600;
+            color: #4a5568;
+        }
+        .slider-group input[type="range"] {
+            flex-grow: 1;
+            -webkit-appearance: none;
+            width: 100%;
+            height: 10px;
+            background: #cbd5e0;
+            outline: none;
+            opacity: 0.7;
+            transition: opacity .2s;
+            border-radius: 5px;
+        }
+        .slider-group input[type="range"]:hover {
+            opacity: 1;
+        }
+        .slider-group input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #4299e1;
+            cursor: pointer;
+            border-radius: 50%;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+        .slider-group input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: #4299e1;
+            cursor: pointer;
+            border-radius: 50%;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+        .value-display {
+            width: 60px;
+            text-align: right;
+            font-weight: 600;
+            color: #2b6cb0;
+        }
+        .btn {
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .btn-primary {
+            background-color: #4299e1;
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #3182ce;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+        }
+        .btn-secondary {
+            background-color: #edf2f7;
+            color: #4a5568;
+            border: 1px solid #cbd5e0;
+        }
+        .btn-secondary:hover {
+            background-color: #e2e8f0;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+        }
+        .formula-box {
+            background-color: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-left: 5px solid #4299e1;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 1.1em;
+            overflow-x: auto;
+        }
+        .formula-box p {
+            margin-bottom: 10px;
+        }
+        .explanation {
+            margin-top: 20px;
+            padding-left: 15px;
+            border-left: 3px solid #a0aec0;
+        }
+        .explanation h4 {
+            font-weight: 700;
+            color: #2d3748;
+            margin-bottom: 10px;
+        }
+        .explanation p {
+            margin-bottom: 8px;
+        }
+        .tab-button {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            background-color: #edf2f7;
+            color: #4a5568;
+            margin-right: 10px;
+        }
+        .tab-button.active {
+            background-color: #4299e1;
+            color: white;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+    <div class="container">
+        <header class="text-center py-10">
+            <h1 class="text-5xl font-extrabold text-blue-700">The Simple Pendulum</h1>
+            <p class="text-xl text-gray-600 mt-3">Dynamics, Phase Portraits, and Energy-Shaping Control</p>
+        </header>
+
+        <section class="card">
+            <h2 class="text-3xl">1. What is a Simple Pendulum?</h2>
+            <p class="mt-4 text-lg">
+                A simple pendulum is an idealized mechanical system consisting of a point mass (the "bob") suspended by a massless, inextensible string or rod from a pivot point. When displaced from its equilibrium position (hanging straight down) and released, it swings back and forth under the influence of gravity.
+            </p>
+            <p class="mt-2 text-lg">
+                It's a fundamental concept in physics, used to understand oscillatory motion, energy conservation, and even the measurement of gravity!
+            </p>
+        </section>
+
+        <section class="card">
+            <h2 class="text-3xl">2. Interactive Pendulum Simulation</h2>
+            <div class="flex flex-col lg:flex-row gap-8 mt-6">
+                <div class="flex-1">
+                    <canvas id="pendulumCanvas" class="w-full h-96"></canvas>
+                    <div class="flex justify-center gap-4 mt-6">
+                        <button id="startButton" class="btn btn-primary">Start</button>
+                        <button id="stopButton" class="btn btn-secondary">Stop</button>
+                        <button id="resetButton" class="btn btn-secondary">Reset</button>
+                    </div>
+                </div>
+                <div class="flex-1">
+                    <h3 class="text-2xl mb-4">Control Panel</h3>
+                    <div class="slider-group">
+                        <label for="lengthSlider">Length (L):</label>
+                        <input type="range" id="lengthSlider" min="0.5" max="3" step="0.1" value="1">
+                        <span id="lengthValue" class="value-display">1.0 m</span>
+                    </div>
+                    <div class="slider-group">
+                        <label for="massSlider">Mass (m):</label>
+                        <input type="range" id="massSlider" min="0.1" max="5" step="0.1" value="1">
+                        <span id="massValue" class="value-display">1.0 kg</span>
+                    </div>
+                    <div class="slider-group">
+                        <label for="gravitySlider">Gravity (g):</label>
+                        <input type="range" id="gravitySlider" min="1" max="20" step="0.1" value="9.81">
+                        <span id="gravityValue" class="value-display">9.81 m/s²</span>
+                    </div>
+                    <div class="slider-group">
+                        <label for="initialAngleSlider">Initial Angle (θ₀):</label>
+                        <input type="range" id="initialAngleSlider" min="0" max="170" step="1" value="90">
+                        <span id="initialAngleValue" class="value-display">90°</span>
+                    </div>
+                    <div class="slider-group">
+                        <label for="dampingSlider">Damping (b):</label>
+                        <input type="range" id="dampingSlider" min="0" max="1" step="0.01" value="0.1">
+                        <span id="dampingValue" class="value-display">0.1</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="card">
+            <h2 class="text-3xl">3. Understanding the Dynamics: Formulas</h2>
+            <p class="mt-4 text-lg">
+                The motion of a simple pendulum is governed by a differential equation derived from Newton's second law for rotational motion. Let's explore the key formulas and how they change with your inputs.
+            </p>
+            <div id="dynamicFormulas" class="formula-box mt-6">
+                <!-- Formulas will be dynamically updated here -->
+            </div>
+            <div id="formulaExplanation" class="explanation">
+                <!-- Explanations will be dynamically updated here -->
+            </div>
+        </section>
+
+        <section class="card">
+            <h2 class="text-3xl">4. Phase Portraits: The Pendulum's "Fingerprint"</h2>
+            <p class="mt-4 text-lg">
+                A phase portrait is a graphical representation of the possible states of a dynamical system. For a pendulum, it plots its angular position (θ) against its angular velocity (ω). Each point on the graph represents a unique "state" of the pendulum at a given moment.
+            </p>
+            <p class="mt-2 text-lg">
+                Observe how the trajectory on the phase portrait changes as the pendulum swings and as you adjust parameters like damping or initial angle.
+            </p>
+            <canvas id="phasePortraitCanvas" class="w-full h-96 mt-6"></canvas>
+            <div class="flex justify-center gap-4 mt-6">
+                <button id="clearPhasePortraitButton" class="btn btn-secondary">Clear Phase Portrait</button>
+            </div>
+            <div class="explanation mt-6">
+                <h4>Interpreting the Phase Portrait:</h4>
+                <ul>
+                    <li><strong>Closed Loops:</strong> Represent oscillatory (swinging) motion. Without damping, these loops would be perfectly closed.</li>
+                    <li><strong>Spirals:</strong> Indicate damped oscillations, where the pendulum eventually comes to rest at the stable equilibrium.</li>
+                    <li><strong>Straight Lines/Separatrices:</strong> For an undamped pendulum, these lines separate different types of motion (oscillations vs. full rotations).</li>
+                    <li><strong>Points:</strong> The center (0,0) is a stable equilibrium (pendulum at rest, hanging down). Points at (±pi, 0) are unstable equilibria (pendulum balanced upright).</li>
+                </ul>
+            </div>
+        </section>
+
+        <section class="card">
+            <h2 class="text-3xl">5. Model Calculation: Step-by-Step</h2>
+            <p class="mt-4 text-lg">
+                Let's dive into how the pendulum's motion is mathematically described. We'll look at it from two perspectives.
+            </p>
+            <div class="flex justify-center mt-6 mb-4">
+                <button id="calculusTab" class="tab-button active">With Calculus</button>
+                <button id="nonCalculusTab" class="tab-button">Without Calculus</button>
+            </div>
+
+            <div id="calculusExplanation" class="explanation">
+                <h3>Calculus Approach: Deriving the Equation of Motion</h3>
+                <p>The motion of the pendulum can be derived using Newton's second law for rotational motion: Sum of Torque (τ) = I * alpha</p>
+                <p>Here:</p>
+                <ul>
+                    <li>Sum of Torque (τ) is the net torque acting on the pendulum.</li>
+                    <li>I is the moment of inertia of the pendulum bob about the pivot point.</li>
+                    <li>alpha is the angular acceleration (d<sup>2</sup>θ/dt<sup>2</sup> or θ_double_dot).</li>
+                </ul>
+                <h4>Step 1: Identify Forces and Torque</h4>
+                <p>The only force causing rotation is the gravitational force (m*g). The component of gravity perpendicular to the rod is m*g*sin(θ).</p>
+                <p>Torque (τ) is force times perpendicular distance from the pivot. So, τ = -L * m*g*sin(θ). The negative sign indicates that the torque acts to restore the pendulum to equilibrium (opposite to the direction of increasing θ).</p>
+                <h4>Step 2: Calculate Moment of Inertia (I)</h4>
+                <p>For a point mass m at a distance L from the pivot, the moment of inertia is I = m*L<sup>2</sup>.</p>
+                <h4>Step 3: Apply Newton's Second Law for Rotation</h4>
+                <p>Substitute τ and I into Sum of Torque (τ) = I * alpha:</p>
+                <p>-m*g*L*sin(θ) = (m*L<sup>2</sup>) * alpha</p>
+                <p>Since alpha = θ_double_dot (the second derivative of angle with respect to time):</p>
+                <p>-m*g*L*sin(θ) = m*L<sup>2</sup> * θ_double_dot</p>
+                <h4>Step 4: Simplify the Equation</h4>
+                <p>Divide both sides by m*L<sup>2</sup>:</p>
+                <p>θ_double_dot = -(m*g*L) / (m*L<sup>2</sup>) * sin(θ)</p>
+                <p>θ_double_dot = -(g/L) * sin(θ)</p>
+                <p>Rearranging, we get the non-linear differential equation for a simple pendulum:</p>
+                <p>θ_double_dot + (g/L) * sin(θ) = 0</p>
+                <p>For small angles (θ ≈ 0), sin(θ) ≈ θ, which simplifies to the linear equation:</p>
+                <p>θ_double_dot + (g/L) * θ = 0</p>
+                <p>This linear equation describes Simple Harmonic Motion (SHM) with an angular frequency ω = sqrt(g/L) and period T = 2*pi*sqrt(L/g).</p>
+            </div>
+
+            <div id="nonCalculusExplanation" class="explanation hidden">
+                <h3>Without Calculus: The Restoring Force and Oscillation</h3>
+                <p>Even without calculus, we can understand why the pendulum swings and what determines its speed.</p>
+                <h4>Step 1: The Restoring Force</h4>
+                <p>When you pull the pendulum bob to the side, gravity pulls it downwards. However, the string pulls it towards the pivot. The combination of these forces results in a "restoring force" that always tries to pull the bob back to its lowest point (equilibrium).</p>
+                <p>This restoring force is a component of gravity: F<sub>restoring</sub> = -m*g*sin(θ). The negative sign means it acts opposite to the displacement.</p>
+                <h4>Step 2: Why it Oscillates</h4>
+                <p>When the bob is released, the restoring force pulls it back to the center. But it gains speed, so it overshoots the center due to inertia. As it moves past the center, the restoring force now acts in the opposite direction, slowing it down until it momentarily stops on the other side. Then, the process repeats, causing it to swing back and forth.</p>
+                <h4>Step 3: What Affects the Swing Speed?</h4>
+                <p>The "speed" of the swing (how quickly it completes one back-and-forth motion, called its period) depends on two main things:</p>
+                <ul>
+                    <li><strong>Length (L):</strong> A longer pendulum has a longer path to travel, and the restoring force has less "leverage" to pull it back quickly. So, longer pendulums swing slower (have a longer period).</li>
+                    <li><strong>Gravity (g):</strong> Stronger gravity means a stronger restoring force, pulling the bob back faster. So, higher gravity makes pendulums swing faster (have a shorter period).</li>
+                </ul>
+                <p>Surprisingly, for small swings, the mass of the bob and the initial angle (how far you pull it back) do NOT significantly affect the period! This is a key characteristic of simple harmonic motion.</p>
+                <h4>Step 4: The Period Formula (Simplified)</h4>
+                <p>Based on observations and more advanced physics, the time it takes for one complete swing (the Period, T) is approximately:</p>
+                <p>T = 2 * pi * sqrt(L/g)</p>
+                <p>This formula shows the direct relationship between length, gravity, and the period, explaining why longer pendulums are slower and stronger gravity makes them faster.</p>
+            </div>
+        </section>
+
+        <section class="card">
+            <h2 class="text-3xl">6. Energy-Shaping Control</h2>
+            <p class="mt-4 text-lg">
+                Energy-shaping control is a powerful technique used to stabilize or steer a system by modifying its energy function. For a pendulum, this means we can apply external forces to guide it to a desired state, like keeping it upright (unstable equilibrium) or making it swing with a specific amplitude.
+            </p>
+            <p class="mt-2 text-lg">
+                In our simulation, you can try to "push" the pendulum using the control buttons to see how it responds. Imagine you want to push it just enough to make it swing higher, or perhaps to stop it at a specific point.
+            </p>
+            <div class="flex justify-center gap-4 mt-6">
+                <button id="applyControlForceButton" class="btn btn-primary">Apply Control Impulse</button>
+                <button id="resetControl" class="btn btn-secondary">Reset Control</button>
+            </div>
+            <div class="explanation mt-6">
+                <h4>How it Works (Conceptually):</h4>
+                <p>Imagine the pendulum has a certain amount of energy. If you want it to swing higher, you need to add energy. If you want it to stop, you need to remove energy (or convert its kinetic energy into potential energy at a desired position).</p>
+                <p>Control systems often use feedback: they measure the current state (angle and velocity) and then calculate a force or torque to apply to move the system towards the desired state. This is like constantly giving small, precise pushes or pulls.</p>
+            </div>
+        </section>
+
+        <section class="card">
+            <h2 class="text-3xl">7. Importance of Variables & Their Impact</h2>
+            <p class="mt-4 text-lg">
+                Each variable in our pendulum model plays a crucial role. Let's understand their individual importance and what happens if they are "mis-functioned" (i.e., set to extreme or unusual values).
+            </p>
+            <div class="mt-6 space-y-6">
+                <div class="explanation">
+                    <h4>Length (L)</h4>
+                    <p><strong>Importance:</strong> Length is the most significant factor determining the pendulum's period (how long a swing takes). Longer pendulums swing slower, and shorter ones swing faster.</p>
+                    <p><strong>Impact of Mis-function:</strong></p>
+                    <ul>
+                        <li><strong>Too Short (e.g., L=0.1m):</strong> The pendulum swings very rapidly. In real life, a very short pendulum might behave more like a vibrating string.</li>
+                        <li><strong>Too Long (e.g., L=3m):</strong> The pendulum swings very slowly. Practical limitations arise from air resistance and the physical space needed.</li>
+                        <li><strong>Zero Length (L=0):</strong> Mathematically, this would lead to infinite frequency, meaning it would oscillate infinitely fast, which is impossible. The model breaks down.</li>
+                    </ul>
+                </div>
+                <div class="explanation">
+                    <h4>Mass (m)</h4>
+                    <p><strong>Importance:</strong> For a simple pendulum, the mass of the bob surprisingly does NOT affect its period (for small angles and ignoring air resistance). This is because both the restoring force (proportional to mass) and the inertia (also proportional to mass) scale equally, canceling out.</p>
+                    <p><strong>Impact of Mis-function:</strong></p>
+                    <ul>
+                        <li><strong>Very Small Mass (e.g., m=0.1kg):</strong> While the period remains the same, the effect of air resistance becomes much more pronounced, causing it to damp out faster.</li>
+                        <li><strong>Very Large Mass (e.g., m=5kg):</strong> The pendulum has more inertia, making it harder to start or stop, but its natural period remains the same. In real life, the string might break!</li>
+                        <li><strong>Zero Mass (m=0):</strong> The concept of a pendulum breaks down; there's no bob to swing.</li>
+                    </ul>
+                </div>
+                <div class="explanation">
+                    <h4>Gravity (g)</h4>
+                    <p><strong>Importance:</strong> Gravity is the driving force behind the pendulum's oscillation. Higher gravity means a stronger restoring force, leading to a faster swing (shorter period).</p>
+                    <p><strong>Impact of Mis-function:</strong></p>
+                    <ul>
+                        <li><strong>Low Gravity (e.g., g=1 m/s²):</strong> The pendulum swings very slowly, almost floating. Imagine a pendulum on the Moon (g ≈ 1.6 m/s²).</li>
+                        <li><strong>High Gravity (e.g., g=20 m/s²):</strong> The pendulum swings very rapidly and forcefully.</li>
+                        <li><strong>Zero Gravity (g=0):</strong> The pendulum would simply stay in whatever position it's placed, as there's no restoring force to pull it back. It wouldn't oscillate.</li>
+                    </ul>
+                </div>
+                <div class="explanation">
+                    <h4>Initial Angle (θ₀)</h4>
+                    <p><strong>Importance:</strong> The initial angle determines the amplitude of the swing. For small angles (typically less than 10-15 degrees), the period is almost independent of the initial angle. However, for larger angles, the period actually increases slightly.</p>
+                    <p><strong>Impact of Mis-function:</strong></p>
+                    <ul>
+                        <li><strong>Small Angle (e.g., θ₀=5°):</strong> The motion closely approximates Simple Harmonic Motion (SHM), and the period formula T = 2*pi*sqrt(L/g) is very accurate.</li>
+                        <li><strong>Large Angle (e.g., θ₀=170°):</strong> The pendulum swings very widely, and the simple period formula becomes less accurate. The motion is no longer truly SHM. If released from exactly 180°, it's an unstable equilibrium.</li>
+                        <li><strong>Angle > 180° (or full rotation):</strong> The pendulum might perform full rotations rather than just oscillations, especially if given an initial push. Our simulation focuses on oscillatory motion.</li>
+                    </ul>
+                </div>
+                <div class="explanation">
+                    <h4>Damping (b)</h4>
+                    <p><strong>Importance:</strong> Damping represents forces that resist motion, like air resistance or friction at the pivot. It causes the pendulum's swing to gradually decrease in amplitude until it comes to rest.</p>
+                    <p><strong>Impact of Mis-function:</strong></p>
+                    <ul>
+                        <li><strong>Zero Damping (b=0):</strong> The pendulum would swing forever with the same amplitude, never losing energy (idealized scenario).</li>
+                        <li><strong>Low Damping (e.g., b=0.1):</strong> The pendulum oscillates many times before coming to rest.</li>
+                        <li><strong>High Damping (e.g., b=0.8):</strong> The pendulum quickly loses energy and might not even complete a full swing, slowly returning to equilibrium without oscillating (overdamped).</li>
+                        <li><strong>Critical Damping:</strong> The specific damping value where the pendulum returns to equilibrium as quickly as possible without oscillating.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <footer class="text-center py-10 text-gray-600 text-sm">
+            <p>&copy; 2025 Simple Pendulum Web App. All rights reserved.</p>
+        </footer>
+    </div>
+
+    <script>
+        // --- Global Variables and Constants ---
+        let scene, camera, renderer;
+        let pendulumRod, pendulumBob;
+        let pivotPoint; // THREE.Vector3 for the pivot
+        let animationId;
+        let isRunning = false;
+
+        // Pendulum parameters (initial values)
+        let L = 1.0; // Length of the pendulum (meters)
+        let m = 1.0; // Mass of the bob (kg) - primarily for formulas, less for visual dynamics here
+        let g = 9.81; // Acceleration due to gravity (m/s^2)
+        let theta = Math.PI / 2; // Initial angle (radians, 90 degrees)
+        let omega = 0; // Angular velocity (rad/s)
+        let damping = 0.1; // Damping coefficient
+
+        // Time step for simulation
+        const dt = 0.01; // seconds
+
+        // Phase Portrait variables
+        let phasePortraitCanvas, phasePortraitCtx;
+        let phasePoints = [];
+        const MAX_PHASE_POINTS = 5000; // Limit points to prevent performance issues
+
+        // --- DOM Elements ---
+        const pendulumCanvas = document.getElementById('pendulumCanvas');
+        const lengthSlider = document.getElementById('lengthSlider');
+        const massSlider = document.getElementById('massSlider');
+        const gravitySlider = document.getElementById('gravitySlider');
+        const initialAngleSlider = document.getElementById('initialAngleSlider');
+        const dampingSlider = document.getElementById('dampingSlider');
+
+        const lengthValue = document.getElementById('lengthValue');
+        const massValue = document.getElementById('massValue');
+        const gravityValue = document.getElementById('gravityValue');
+        const initialAngleValue = document.getElementById('initialAngleValue');
+        const dampingValue = document.getElementById('dampingValue');
+
+        const startButton = document.getElementById('startButton');
+        const stopButton = document.getElementById('stopButton');
+        const resetButton = document.getElementById('resetButton');
+        const clearPhasePortraitButton = document.getElementById('clearPhasePortraitButton');
+        const applyControlForceButton = document.getElementById('applyControlForceButton');
+        const resetControl = document.getElementById('resetControl');
+
+        const dynamicFormulasDiv = document.getElementById('dynamicFormulas');
+        const formulaExplanationDiv = document.getElementById('formulaExplanation');
+
+        const calculusTab = document.getElementById('calculusTab');
+        const nonCalculusTab = document.getElementById('nonCalculusTab');
+        const calculusExplanation = document.getElementById('calculusExplanation');
+        const nonCalculusExplanation = document.getElementById('nonCalculusExplanation');
+
+        // --- Initialization Functions ---
+
+        /**
+         * Initializes the 3D scene, camera, and renderer for the pendulum.
+         */
+        function initPendulumScene() {
+            // Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xe2e8f0); // Match canvas background
+
+            // Camera
+            // Using OrthographicCamera for a simpler, fixed 2D-like view of the pendulum
+            const aspect = pendulumCanvas.clientWidth / pendulumCanvas.clientHeight;
+            const frustumSize = 3; // Controls the "zoom" level
+            camera = new THREE.OrthographicCamera(
+                -frustumSize * aspect / 2,
+                frustumSize * aspect / 2,
+                frustumSize / 2,
+                -frustumSize / 2,
+                0.1, // near clipping plane
+                1000 // far clipping plane
+            );
+            camera.position.z = 5; // Position camera along z-axis
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ canvas: pendulumCanvas, antialias: true });
+            renderer.setSize(pendulumCanvas.clientWidth, pendulumCanvas.clientHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+
+            // Pivot point (origin of the pendulum)
+            pivotPoint = new THREE.Vector3(0, 1, 0); // Position the pivot slightly above center
+
+            // Pendulum Rod (Line)
+            const rodMaterial = new THREE.LineBasicMaterial({ color: 0x4a5568, linewidth: 3 });
+            const rodGeometry = new THREE.BufferGeometry().setFromPoints([pivotPoint, new THREE.Vector3()]);
+            pendulumRod = new THREE.Line(rodGeometry, rodMaterial);
+            scene.add(pendulumRod);
+
+            // Pendulum Bob (Sphere)
+            const bobGeometry = new THREE.SphereGeometry(0.15, 32, 32); // Radius 0.15
+            const bobMaterial = new THREE.MeshPhongMaterial({ color: 0x4299e1, specular: 0x999999, shininess: 100 });
+            pendulumBob = new THREE.Mesh(bobGeometry, bobMaterial);
+            scene.add(pendulumBob);
+
+            // Add some basic lighting
+            const ambientLight = new THREE.AmbientLight(0x404040); // soft white light
+            scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(1, 1, 1).normalize();
+            scene.add(directionalLight);
+
+            // Initial update of pendulum position
+            updatePendulumGeometry();
+            renderer.render(scene, camera); // Render once immediately
+        }
+
+        /**
+         * Initializes the 2D canvas for the phase portrait.
+         */
+        function initPhasePortraitCanvas() {
+            phasePortraitCanvas = document.getElementById('phasePortraitCanvas');
+            phasePortraitCtx = phasePortraitCanvas.getContext('2d');
+
+            // Set canvas dimensions for high DPI displays
+            const dpr = window.devicePixelRatio || 1;
+            phasePortraitCanvas.width = phasePortraitCanvas.clientWidth * dpr;
+            phasePortraitCanvas.height = phasePortraitCanvas.clientHeight * dpr;
+            phasePortraitCtx.scale(dpr, dpr);
+
+            drawPhasePortraitAxes();
+        }
+
+        /**
+         * Draws the axes and labels for the phase portrait.
+         */
+        function drawPhasePortraitAxes() {
+            const ctx = phasePortraitCtx;
+            const width = phasePortraitCanvas.clientWidth;
+            const height = phasePortraitCanvas.clientHeight;
+
+            ctx.clearRect(0, 0, width, height); // Clear canvas
+
+            // Background
+            ctx.fillStyle = '#e2e8f0';
+            ctx.fillRect(0, 0, width, height);
+
+            // Grid lines
+            ctx.strokeStyle = '#cbd5e0';
+            ctx.lineWidth = 0.5;
+            const scaleX = width / (2 * Math.PI * 2); // Scale for -2PI to 2PI on X
+            const scaleY = height / (2 * 5); // Scale for -5 to 5 on Y (max omega approx 5)
+
+            // Vertical grid lines (theta)
+            for (let i = -2; i <= 2; i++) {
+                ctx.beginPath();
+                ctx.moveTo(width / 2 + i * Math.PI * scaleX, 0);
+                ctx.lineTo(width / 2 + i * Math.PI * scaleX, height);
+                ctx.stroke();
+            }
+            // Horizontal grid lines (omega)
+            for (let i = -5; i <= 5; i++) {
+                ctx.beginPath();
+                ctx.moveTo(0, height / 2 - i * scaleY);
+                ctx.lineTo(width, height / 2 - i * scaleY);
+                ctx.stroke();
+            }
+
+
+            // Axes
+            ctx.strokeStyle = '#4a5568';
+            ctx.lineWidth = 2;
+
+            // X-axis (theta)
+            ctx.beginPath();
+            ctx.moveTo(0, height / 2);
+            ctx.lineTo(width, height / 2);
+            ctx.stroke();
+
+            // Y-axis (omega)
+            ctx.beginPath();
+            ctx.moveTo(width / 2, 0);
+            ctx.lineTo(width / 2, height);
+            ctx.stroke();
+
+            // Labels
+            ctx.fillStyle = '#2d3748';
+            ctx.font = '14px Inter';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            ctx.fillText('θ (rad)', width - 30, height / 2 + 20);
+            ctx.save();
+            ctx.translate(width / 2 - 30, 20);
+            ctx.rotate(-Math.PI / 2);
+            ctx.fillText('ω (rad/s)', 0, 0);
+            ctx.restore();
+
+            // Tick marks and values
+            ctx.font = '12px Inter';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+            ctx.fillText('0', width / 2 + 10, height / 2 + 5);
+            ctx.fillText('pi', width / 2 + Math.PI * scaleX, height / 2 + 5);
+            ctx.fillText('-pi', width / 2 - Math.PI * scaleX, height / 2 + 5);
+            ctx.fillText('2pi', width / 2 + 2 * Math.PI * scaleX, height / 2 + 5);
+            ctx.fillText('-2pi', width / 2 - 2 * Math.PI * scaleX, height / 2 + 5);
+
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('5', width / 2 - 5, height / 2 - 5 * scaleY);
+            ctx.fillText('-5', width / 2 - 5, height / 2 - (-5) * scaleY);
+        }
+
+        // --- Pendulum Physics & Rendering ---
+
+        /**
+         * Updates the position of the pendulum bob and rod in the 3D scene.
+         */
+        function updatePendulumGeometry() {
+            // Calculate bob position based on angle and length
+            const x = pivotPoint.x + L * Math.sin(theta);
+            const y = pivotPoint.y - L * Math.cos(theta);
+            pendulumBob.position.set(x, y, 0);
+
+            // Update rod geometry
+            const positions = pendulumRod.geometry.attributes.position.array;
+            positions[3] = x;
+            positions[4] = y;
+            pendulumRod.geometry.attributes.position.needsUpdate = true;
+        }
+
+        /**
+         * Performs one step of the pendulum simulation using Euler method.
+         */
+        function updatePendulumPhysics() {
+            // Angular acceleration: alpha = - (g/L) * sin(theta) - (damping/m) * omega
+            // The damping term is simplified here, a more rigorous model would involve more complex fluid dynamics.
+            const alpha = -(g / L) * Math.sin(theta) - (damping * omega);
+
+            // Update angular velocity and angle using Euler integration
+            omega += alpha * dt;
+            theta += omega * dt;
+
+            // Keep theta within a reasonable range for phase portrait visualization
+            // This handles cases where the pendulum might swing full circles
+            theta = theta % (2 * Math.PI);
+            if (theta > Math.PI) theta -= 2 * Math.PI;
+            if (theta < -Math.PI) theta += 2 * Math.PI;
+
+            // Store phase portrait data
+            phasePoints.push({ theta: theta, omega: omega });
+            if (phasePoints.length > MAX_PHASE_POINTS) {
+                phasePoints.shift(); // Remove oldest point
+            }
+        }
+
+        /**
+         * Main animation loop.
+         */
+        function animate() {
+            if (isRunning) {
+                updatePendulumPhysics();
+                updatePendulumGeometry();
+                updateDynamicFormulas();
+                drawPhasePortrait();
+            }
+            renderer.render(scene, camera);
+            animationId = requestAnimationFrame(animate);
+        }
+
+        // --- Phase Portrait Drawing ---
+
+        /**
+         * Draws the phase portrait based on collected phase points.
+         */
+        function drawPhasePortrait() {
+            drawPhasePortraitAxes(); // Redraw axes and grid
+
+            const ctx = phasePortraitCtx;
+            const width = phasePortraitCanvas.clientWidth;
+            const height = phasePortraitCanvas.clientHeight;
+
+            // Scaling factors for mapping physics values to canvas coordinates
+            // Assuming theta ranges from -2*PI to 2*PI, omega from -5 to 5 (approximate max for typical swings)
+            const scaleX = width / (4 * Math.PI); // Maps -2PI to 2PI to canvas width
+            const scaleY = height / 10; // Maps -5 to 5 to canvas height
+
+            // Offset to center the origin (0,0)
+            const offsetX = width / 2;
+            const offsetY = height / 2;
+
+            ctx.beginPath();
+            ctx.strokeStyle = '#4299e1';
+            ctx.lineWidth = 1.5;
+
+            if (phasePoints.length > 0) {
+                // Start at the first point
+                ctx.moveTo(offsetX + phasePoints[0].theta * scaleX, offsetY - phasePoints[0].omega * scaleY);
+
+                // Draw lines to subsequent points
+                for (let i = 1; i < phasePoints.length; i++) {
+                    ctx.lineTo(offsetX + phasePoints[i].theta * scaleX, offsetY - phasePoints[i].omega * scaleY);
+                }
+            }
+            ctx.stroke();
+
+            // Draw current point
+            ctx.fillStyle = '#e53e3e'; // Red dot for current position
+            const currentPoint = phasePoints[phasePoints.length - 1];
+            if (currentPoint) {
+                ctx.beginPath();
+                ctx.arc(offsetX + currentPoint.theta * scaleX, offsetY - currentPoint.omega * scaleY, 4, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        // --- Dynamic Formula Updates ---
+
+        /**
+         * Updates the formulas and their explanations based on current parameters.
+         */
+        function updateDynamicFormulas() {
+            const periodSmallAngle = 2 * Math.PI * Math.sqrt(L / g);
+            const kineticEnergy = 0.5 * m * L * L * omega * omega; // KE = 0.5 * I * omega^2, I = mL^2
+            const potentialEnergy = m * g * L * (1 - Math.cos(theta)); // PE = mgh, h = L(1 - cos(theta))
+            const totalEnergy = kineticEnergy + potentialEnergy;
+
+            dynamicFormulasDiv.innerHTML = `
+                <p><strong>Equation of Motion:</strong></p>
+                <p>theta_double_dot + (g/L) * sin(theta) = 0</p>
+                <p><em>(This describes how the angle changes over time)</em></p>
+                <p><strong>Current Angular Velocity (ω):</strong> ${omega.toFixed(3)} rad/s</p>
+                <p><strong>Current Angle (θ):</strong> ${(theta * 180 / Math.PI).toFixed(1)}° (${theta.toFixed(3)} rad)</p>
+                <p><strong>Period (T) for Small Angles:</strong></p>
+                <p>T = 2 * pi * sqrt(L/g) = 2 * pi * sqrt(${L.toFixed(2)}/${g.toFixed(2)}) ≈ ${periodSmallAngle.toFixed(3)} s</p>
+                <p><strong>Kinetic Energy (KE):</strong></p>
+                <p>KE = 0.5 * m * L<sup>2</sup> * ω<sup>2</sup> = 0.5 * ${m.toFixed(1)} * ${L.toFixed(1)}<sup>2</sup> * ${omega.toFixed(3)}<sup>2</sup> ≈ ${kineticEnergy.toFixed(3)} J</p>
+                <p><strong>Potential Energy (PE):</strong></p>
+                <p>PE = m*g*L*(1 - cos(theta)) = ${m.toFixed(1)} * ${g.toFixed(2)} * ${L.toFixed(1)} * (1 - cos(${theta.toFixed(3)})) ≈ ${potentialEnergy.toFixed(3)} J</p>
+                <p><strong>Total Mechanical Energy (E):</strong> ${totalEnergy.toFixed(3)} J</p>
+            `;
+
+            formulaExplanationDiv.innerHTML = `
+                <h4>Explanation of Terms:</h4>
+                <ul>
+                    <li><strong>theta_double_dot:</strong> Angular acceleration. How fast the angular velocity is changing.</li>
+                    <li><strong>θ (theta):</strong> Angular displacement from the vertical (in radians).</li>
+                    <li><strong>ω (omega):</strong> Angular velocity (in radians per second). How fast the pendulum is swinging.</li>
+                    <li><strong>L:</strong> Length of the pendulum rod/string. Current value: ${L.toFixed(2)} m.</li>
+                    <li><strong>m:</strong> Mass of the pendulum bob. Current value: ${m.toFixed(1)} kg.</li>
+                    <li><strong>g:</strong> Acceleration due to gravity. Current value: ${g.toFixed(2)} m/s².</li>
+                    <li><strong>T:</strong> Period. The time it takes for one complete back-and-forth swing.</li>
+                    <li><strong>KE:</strong> Kinetic Energy. Energy due to motion. Highest at the bottom of the swing.</li>
+                    <li><strong>PE:</strong> Potential Energy. Energy due to position (height). Highest at the peak of the swing.</li>
+                    <li><strong>Total Mechanical Energy:</strong> Sum of KE and PE. In an undamped system, this would be constant. With damping, it slowly decreases.</li>
+                </ul>
+            `;
+        }
+
+        // --- Event Listeners ---
+
+        /**
+         * Resets the pendulum to its initial angle and velocity, clears phase portrait.
+         */
+        function resetPendulum() {
+            theta = parseFloat(initialAngleSlider.value) * Math.PI / 180;
+            omega = 0;
+            phasePoints = []; // Clear phase portrait history
+            drawPhasePortraitAxes(); // Redraw empty axes
+            updatePendulumGeometry();
+            updateDynamicFormulas();
+            renderer.render(scene, camera);
+        }
+
+        /**
+         * Applies a small impulse to the pendulum, simulating a control force.
+         */
+        function applyControlForce() {
+            // Apply a small angular velocity impulse
+            omega += 0.5; // You can adjust this value
+            // Optionally, you could also apply a small change to theta, or a more complex force.
+            // For simplicity, we'll just give it a kick.
+        }
+
+        /**
+         * Resets the control effect by bringing omega to 0.
+         */
+        function resetControlEffect() {
+            omega = 0; // Stop any current motion due to control
+            // You might want to also bring theta to 0 for a full reset, but for "control reset", just stopping the applied force is enough.
+        }
+
+        startButton.addEventListener('click', () => {
+            if (!isRunning) {
+                isRunning = true;
+                animate();
+            }
+        });
+
+        stopButton.addEventListener('click', () => {
+            isRunning = false;
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+            }
+        });
+
+        resetButton.addEventListener('click', () => {
+            stopButton.click(); // Stop animation first
+            resetPendulum();
+        });
+
+        clearPhasePortraitButton.addEventListener('click', () => {
+            phasePoints = [];
+            drawPhasePortraitAxes();
+        });
+
+        applyControlForceButton.addEventListener('click', applyControlForce);
+        resetControl.addEventListener('click', resetControlEffect);
+
+
+        // Slider event listeners
+        lengthSlider.addEventListener('input', (e) => {
+            L = parseFloat(e.target.value);
+            lengthValue.textContent = `${L.toFixed(1)} m`;
+            resetPendulum(); // Reset to apply new length visually
+        });
+
+        massSlider.addEventListener('input', (e) => {
+            m = parseFloat(e.target.value);
+            massValue.textContent = `${m.toFixed(1)} kg`;
+            updateDynamicFormulas(); // Update formulas that depend on mass
+        });
+
+        gravitySlider.addEventListener('input', (e) => {
+            g = parseFloat(e.target.value);
+            gravityValue.textContent = `${g.toFixed(2)} m/s²`;
+            resetPendulum(); // Reset to apply new gravity visually
+        });
+
+        initialAngleSlider.addEventListener('input', (e) => {
+            const angleDeg = parseFloat(e.target.value);
+            initialAngleValue.textContent = `${angleDeg}°`;
+            theta = angleDeg * Math.PI / 180; // Update current angle for immediate visual feedback
+            omega = 0; // Reset velocity when changing initial angle
+            phasePoints = []; // Clear phase portrait to start new trajectory
+            updatePendulumGeometry();
+            updateDynamicFormulas();
+            drawPhasePortraitAxes();
+            renderer.render(scene, camera); // Render immediately
+        });
+
+        dampingSlider.addEventListener('input', (e) => {
+            damping = parseFloat(e.target.value);
+            dampingValue.textContent = `${damping.toFixed(2)}`;
+        });
+
+        // Tab switching for model calculation
+        calculusTab.addEventListener('click', () => {
+            calculusExplanation.classList.remove('hidden');
+            nonCalculusExplanation.classList.add('hidden');
+            calculusTab.classList.add('active');
+            nonCalculusTab.classList.remove('active');
+        });
+
+        nonCalculusTab.addEventListener('click', () => {
+            nonCalculusExplanation.classList.remove('hidden');
+            calculusExplanation.classList.add('hidden');
+            nonCalculusTab.classList.add('active');
+            calculusTab.classList.remove('active');
+        });
+
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            // Update pendulum canvas size and camera aspect ratio
+            const newWidth = pendulumCanvas.clientWidth;
+            const newHeight = pendulumCanvas.clientHeight;
+            renderer.setSize(newWidth, newHeight);
+            const aspect = newWidth / newHeight;
+            const frustumSize = 3;
+            camera.left = -frustumSize * aspect / 2;
+            camera.right = frustumSize * aspect / 2;
+            camera.top = frustumSize / 2;
+            camera.bottom = -frustumSize / 2;
+            camera.updateProjectionMatrix();
+            renderer.render(scene, camera);
+
+            // Update phase portrait canvas size
+            const dpr = window.devicePixelRatio || 1;
+            phasePortraitCanvas.width = phasePortraitCanvas.clientWidth * dpr;
+            phasePortraitCanvas.height = phasePortraitCanvas.clientHeight * dpr;
+            phasePortraitCtx.scale(dpr, dpr);
+            drawPhasePortraitAxes(); // Redraw axes and path
+            drawPhasePortrait();
+        });
+
+        // --- Initial Setup on Window Load ---
+        window.onload = function() {
+            initPendulumScene();
+            initPhasePortraitCanvas();
+            // Set initial slider values and update displays
+            lengthSlider.value = L;
+            massSlider.value = m;
+            gravitySlider.value = g;
+            initialAngleSlider.value = (theta * 180 / Math.PI).toFixed(0);
+            dampingSlider.value = damping;
+
+            lengthValue.textContent = `${L.toFixed(1)} m`;
+            massValue.textContent = `${m.toFixed(1)} kg`;
+            gravityValue.textContent = `${g.toFixed(2)} m/s²`;
+            initialAngleValue.textContent = `${(theta * 180 / Math.PI).toFixed(0)}°`;
+            dampingValue.textContent = `${damping.toFixed(2)}`;
+
+            updateDynamicFormulas(); // Populate initial formulas
+            resetPendulum(); // Ensure initial state is rendered correctly
+        };
+    </script>
+</body>
+</html>
