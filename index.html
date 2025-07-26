@@ -171,18 +171,9 @@
         </header>
 
         <section class="card">
-            <h2 class="text-3xl">1. What is a Simple Pendulum?</h2>
-            <p class="mt-4 text-lg">
-                A simple pendulum is an idealized mechanical system consisting of a point mass (the "bob") suspended by a massless, inextensible string or rod from a pivot point. When displaced from its equilibrium position (hanging straight down) and released, it swings back and forth under the influence of gravity.
-            </p>
-            <p class="mt-2 text-lg">
-                It's a fundamental concept in physics, used to understand oscillatory motion, energy conservation, and even the measurement of gravity!
-            </p>
-        </section>
-
-        <section class="card">
-            <h2 class="text-3xl">2. Interactive Pendulum Simulation</h2>
+            <h2 class="text-3xl">2. Interactive Pendulum Simulation & Phase Portrait</h2>
             <div class="flex flex-col lg:flex-row gap-8 mt-6">
+                <!-- Pendulum Simulation Canvas and Controls -->
                 <div class="flex-1">
                     <canvas id="pendulumCanvas" class="w-full h-96"></canvas>
                     <div class="flex justify-center gap-4 mt-6">
@@ -191,8 +182,19 @@
                         <button id="resetButton" class="btn btn-secondary">Reset</button>
                     </div>
                 </div>
+                <!-- Phase Portrait Canvas and Controls -->
                 <div class="flex-1">
-                    <h3 class="text-2xl mb-4">Control Panel</h3>
+                    <canvas id="phasePortraitCanvas" class="w-full h-96"></canvas>
+                    <div class="flex justify-center gap-4 mt-6">
+                        <button id="clearPhasePortraitButton" class="btn btn-secondary">Clear All Trajectories</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Control Panel (Sliders and Energy Control Buttons) -->
+            <div class="control-panel-wrapper mt-8">
+                <h3 class="text-2xl mb-4">Control Panel</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <div class="slider-group">
                         <label for="lengthSlider">Length (L):</label>
                         <input type="range" id="lengthSlider" min="0.5" max="3" step="0.1" value="1">
@@ -219,6 +221,10 @@
                         <span id="dampingValue" class="value-display">0.1</span>
                     </div>
                 </div>
+                <div class="flex justify-center gap-4 mt-6">
+                    <button id="applyControlForceButton" class="btn btn-primary">Apply Control Impulse</button>
+                    <button id="resetControl" class="btn btn-secondary">Reset Control</button>
+                </div>
             </div>
         </section>
 
@@ -243,10 +249,7 @@
             <p class="mt-2 text-lg">
                 Observe how the trajectory on the phase portrait changes as the pendulum swings and as you adjust parameters like damping or initial angle.
             </p>
-            <canvas id="phasePortraitCanvas" class="w-full h-96 mt-6"></canvas>
-            <div class="flex justify-center gap-4 mt-6">
-                <button id="clearPhasePortraitButton" class="btn btn-secondary">Clear Phase Portrait</button>
-            </div>
+            <!-- Moved canvas and button to Section 2 -->
             <div class="explanation mt-6">
                 <h4>Interpreting the Phase Portrait:</h4>
                 <ul>
@@ -254,6 +257,8 @@
                     <li><strong>Spirals:</strong> Indicate damped oscillations, where the pendulum eventually comes to rest at the stable equilibrium.</li>
                     <li><strong>Straight Lines/Separatrices:</strong> For an undamped pendulum, these lines separate different types of motion (oscillations vs. full rotations).</li>
                     <li><strong>Points:</strong> The center (0,0) is a stable equilibrium (pendulum at rest, hanging down). Points at (±pi, 0) are unstable equilibria (pendulum balanced upright).</li>
+                    <li><strong>Repeating Patterns:</strong> The phase portrait repeats its pattern every 2*pi along the horizontal (theta) axis. This shows that angles like 0, 2*pi, 4*pi, etc., all represent the same physical position (hanging straight down).</li>
+                    <li><strong>Continuous Trajectories (Full Rotations):</strong> If the pendulum has enough energy to swing over the top, its trajectory will extend continuously across the phase portrait, showing an ever-increasing or decreasing angle.</li>
                 </ul>
             </div>
         </section>
@@ -328,10 +333,7 @@
             <p class="mt-2 text-lg">
                 In our simulation, you can try to "push" the pendulum using the control buttons to see how it responds. Imagine you want to push it just enough to make it swing higher, or perhaps to stop it at a specific point.
             </p>
-            <div class="flex justify-center gap-4 mt-6">
-                <button id="applyControlForceButton" class="btn btn-primary">Apply Control Impulse</button>
-                <button id="resetControl" class="btn btn-secondary">Reset Control</button>
-            </div>
+            <!-- Moved buttons to Section 2 -->
             <div class="explanation mt-6">
                 <h4>How it Works (Conceptually):</h4>
                 <p>Imagine the pendulum has a certain amount of energy. If you want it to swing higher, you need to add energy. If you want it to stop, you need to remove energy (or convert its kinetic energy into potential energy at a desired position).</p>
@@ -425,8 +427,23 @@
 
         // Phase Portrait variables
         let phasePortraitCanvas, phasePortraitCtx;
-        let phasePoints = [];
-        const MAX_PHASE_POINTS = 5000; // Limit points to prevent performance issues
+        let allPhaseTrajectories = []; // Array to hold multiple trajectories
+        let currentTrajectory = [];    // Current active trajectory being drawn
+        const MAX_PHASE_POINTS_PER_TRAJECTORY = 5000; // Limit points to prevent performance issues
+
+        // Colors for different trajectories
+        const trajectoryColors = [
+            '#4299e1', // Blue
+            '#e53e3e', // Red
+            '#38a169', // Green
+            '#dd6b20', // Orange
+            '#6b46c1', // Purple
+            '#319795', // Teal
+            '#d69e2e', // Yellow-orange
+            '#805ad5', // Indigo
+            '#c53030', // Dark Red
+            '#2c5282'  // Dark Blue
+        ];
 
         // --- DOM Elements ---
         const pendulumCanvas = document.getElementById('pendulumCanvas');
@@ -546,17 +563,20 @@
             // Grid lines
             ctx.strokeStyle = '#cbd5e0';
             ctx.lineWidth = 0.5;
-            const scaleX = width / (2 * Math.PI * 2); // Scale for -2PI to 2PI on X
-            const scaleY = height / (2 * 5); // Scale for -5 to 5 on Y (max omega approx 5)
+            // Adjust scaling for theta to show multiple 2pi cycles (now -5pi to 5pi)
+            const axisRangeTheta = 10 * Math.PI; // from -5pi to 5pi
+            const axisRangeOmega = 10; // e.g., from -5 to 5
+            const scaleX = width / axisRangeTheta;
+            const scaleY = height / axisRangeOmega;
 
-            // Vertical grid lines (theta)
-            for (let i = -2; i <= 2; i++) {
+            // Vertical grid lines (theta) - from -5pi to 5pi
+            for (let i = -5; i <= 5; i++) {
                 ctx.beginPath();
                 ctx.moveTo(width / 2 + i * Math.PI * scaleX, 0);
                 ctx.lineTo(width / 2 + i * Math.PI * scaleX, height);
                 ctx.stroke();
             }
-            // Horizontal grid lines (omega)
+            // Horizontal grid lines (omega) - from -5 to 5
             for (let i = -5; i <= 5; i++) {
                 ctx.beginPath();
                 ctx.moveTo(0, height / 2 - i * scaleY);
@@ -594,15 +614,21 @@
             ctx.fillText('ω (rad/s)', 0, 0);
             ctx.restore();
 
-            // Tick marks and values
+            // Tick marks and values (-5pi to 5pi)
             ctx.font = '12px Inter';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'top';
-            ctx.fillText('0', width / 2 + 10, height / 2 + 5);
-            ctx.fillText('pi', width / 2 + Math.PI * scaleX, height / 2 + 5);
-            ctx.fillText('-pi', width / 2 - Math.PI * scaleX, height / 2 + 5);
-            ctx.fillText('2pi', width / 2 + 2 * Math.PI * scaleX, height / 2 + 5);
-            ctx.fillText('-2pi', width / 2 - 2 * Math.PI * scaleX, height / 2 + 5);
+            for (let i = -5; i <= 5; i++) {
+                if (i === 0) {
+                    ctx.fillText('0', width / 2 + 10, height / 2 + 5);
+                } else if (i === 1) {
+                    ctx.fillText('pi', width / 2 + i * Math.PI * scaleX, height / 2 + 5);
+                } else if (i === -1) {
+                    ctx.fillText('-pi', width / 2 + i * Math.PI * scaleX, height / 2 + 5);
+                } else {
+                    ctx.fillText(`${i}pi`, width / 2 + i * Math.PI * scaleX, height / 2 + 5);
+                }
+            }
 
             ctx.textAlign = 'right';
             ctx.textBaseline = 'middle';
@@ -617,8 +643,11 @@
          */
         function updatePendulumGeometry() {
             // Calculate bob position based on angle and length
-            const x = pivotPoint.x + L * Math.sin(theta);
-            const y = pivotPoint.y - L * Math.cos(theta);
+            // For 3D visualization, we still want theta to be within a single rotation for correct visual representation
+            // so we use a wrapped theta for the 3D model, but let the 'true' theta accumulate for the phase portrait.
+            const wrappedThetaFor3D = theta % (2 * Math.PI);
+            const x = pivotPoint.x + L * Math.sin(wrappedThetaFor3D);
+            const y = pivotPoint.y - L * Math.cos(wrappedThetaFor3D);
             pendulumBob.position.set(x, y, 0);
 
             // Update rod geometry
@@ -633,23 +662,17 @@
          */
         function updatePendulumPhysics() {
             // Angular acceleration: alpha = - (g/L) * sin(theta) - (damping/m) * omega
-            // The damping term is simplified here, a more rigorous model would involve more complex fluid dynamics.
+            // Note: Math.sin(theta) correctly handles theta values outside of [-PI, PI] due to its periodic nature.
             const alpha = -(g / L) * Math.sin(theta) - (damping * omega);
 
             // Update angular velocity and angle using Euler integration
             omega += alpha * dt;
-            theta += omega * dt;
+            theta += omega * dt; // Allow theta to accumulate for continuous phase portrait display
 
-            // Keep theta within a reasonable range for phase portrait visualization
-            // This handles cases where the pendulum might swing full circles
-            theta = theta % (2 * Math.PI);
-            if (theta > Math.PI) theta -= 2 * Math.PI;
-            if (theta < -Math.PI) theta += 2 * Math.PI;
-
-            // Store phase portrait data
-            phasePoints.push({ theta: theta, omega: omega });
-            if (phasePoints.length > MAX_PHASE_POINTS) {
-                phasePoints.shift(); // Remove oldest point
+            // Store phase portrait data for the current trajectory
+            currentTrajectory.push({ theta: theta, omega: omega });
+            if (currentTrajectory.length > MAX_PHASE_POINTS_PER_TRAJECTORY) {
+                currentTrajectory.shift(); // Remove oldest point from current trajectory
             }
         }
 
@@ -680,35 +703,63 @@
             const height = phasePortraitCanvas.clientHeight;
 
             // Scaling factors for mapping physics values to canvas coordinates
-            // Assuming theta ranges from -2*PI to 2*PI, omega from -5 to 5 (approximate max for typical swings)
-            const scaleX = width / (4 * Math.PI); // Maps -2PI to 2PI to canvas width
-            const scaleY = height / 10; // Maps -5 to 5 to canvas height
+            const axisRangeTheta = 10 * Math.PI; // from -5pi to 5pi
+            const axisRangeOmega = 10; // e.g., from -5 to 5
+            const scaleX = width / axisRangeTheta;
+            const scaleY = height / axisRangeOmega;
 
-            // Offset to center the origin (0,0)
+            // Offset to center the origin (0,0) of the visible range (-5pi to 5pi)
             const offsetX = width / 2;
             const offsetY = height / 2;
 
-            ctx.beginPath();
-            ctx.strokeStyle = '#4299e1';
-            ctx.lineWidth = 1.5;
+            // Draw all historical trajectories
+            allPhaseTrajectories.forEach((trajectory, index) => {
+                if (trajectory.length > 0) {
+                    ctx.beginPath();
+                    ctx.strokeStyle = trajectoryColors[index % trajectoryColors.length]; // Cycle through colors
+                    ctx.lineWidth = 1.5;
 
-            if (phasePoints.length > 0) {
-                // Start at the first point
-                ctx.moveTo(offsetX + phasePoints[0].theta * scaleX, offsetY - phasePoints[0].omega * scaleY);
+                    // Map theta to the visible range for plotting, considering it can be outside -5pi to 5pi
+                    // This ensures trajectories that go beyond the plotted range still appear correctly
+                    // We need to handle the wrapping for plotting, but keep the underlying theta accumulating.
+                    let startThetaMapped = trajectory[0].theta - (Math.floor((trajectory[0].theta + 5 * Math.PI) / (10 * Math.PI)) * 10 * Math.PI);
+                    let startX = offsetX + startThetaMapped * scaleX;
+                    ctx.moveTo(startX, offsetY - trajectory[0].omega * scaleY);
 
-                // Draw lines to subsequent points
-                for (let i = 1; i < phasePoints.length; i++) {
-                    ctx.lineTo(offsetX + phasePoints[i].theta * scaleX, offsetY - phasePoints[i].omega * scaleY);
+                    for (let i = 1; i < trajectory.length; i++) {
+                        let currentThetaMapped = trajectory[i].theta - (Math.floor((trajectory[i].theta + 5 * Math.PI) / (10 * Math.PI)) * 10 * Math.PI);
+                        let currentX = offsetX + currentThetaMapped * scaleX;
+                        ctx.lineTo(currentX, offsetY - trajectory[i].omega * scaleY);
+                    }
+                    ctx.stroke();
                 }
-            }
-            ctx.stroke();
+            });
 
-            // Draw current point
-            ctx.fillStyle = '#e53e3e'; // Red dot for current position
-            const currentPoint = phasePoints[phasePoints.length - 1];
-            if (currentPoint) {
+            // Draw the current active trajectory (if any)
+            if (currentTrajectory.length > 0) {
                 ctx.beginPath();
-                ctx.arc(offsetX + currentPoint.theta * scaleX, offsetY - currentPoint.omega * scaleY, 4, 0, Math.PI * 2);
+                const currentColorIndex = allPhaseTrajectories.length % trajectoryColors.length;
+                ctx.strokeStyle = trajectoryColors[currentColorIndex];
+                ctx.lineWidth = 2; // Make current trajectory slightly thicker
+
+                let startThetaCurrentMapped = currentTrajectory[0].theta - (Math.floor((currentTrajectory[0].theta + 5 * Math.PI) / (10 * Math.PI)) * 10 * Math.PI);
+                let startXCurrent = offsetX + startThetaCurrentMapped * scaleX;
+                ctx.moveTo(startXCurrent, offsetY - currentTrajectory[0].omega * scaleY);
+
+                for (let i = 1; i < currentTrajectory.length; i++) {
+                    let currentThetaPointMapped = currentTrajectory[i].theta - (Math.floor((currentTrajectory[i].theta + 5 * Math.PI) / (10 * Math.PI)) * 10 * Math.PI);
+                    let currentXPoint = offsetX + currentThetaPointMapped * scaleX;
+                    ctx.lineTo(currentXPoint, offsetY - currentTrajectory[i].omega * scaleY);
+                }
+                ctx.stroke();
+
+                // Draw current point as a red dot
+                ctx.fillStyle = '#e53e3e';
+                const currentPoint = currentTrajectory[currentTrajectory.length - 1];
+                let currentPointThetaMapped = currentPoint.theta - (Math.floor((currentPoint.theta + 5 * Math.PI) / (10 * Math.PI)) * 10 * Math.PI);
+                const currentPointX = offsetX + currentPointThetaMapped * scaleX;
+                ctx.beginPath();
+                ctx.arc(currentPointX, offsetY - currentPoint.omega * scaleY, 4, 0, Math.PI * 2);
                 ctx.fill();
             }
         }
@@ -759,16 +810,19 @@
         // --- Event Listeners ---
 
         /**
-         * Resets the pendulum to its initial angle and velocity, clears phase portrait.
+         * Resets the pendulum to its initial angle and velocity, and prepares for a new trajectory.
          */
         function resetPendulum() {
+            // The currentTrajectory is already part of allPhaseTrajectories if a simulation was started.
+            // When resetting, we start a new 'currentTrajectory' for the next run.
             theta = parseFloat(initialAngleSlider.value) * Math.PI / 180;
             omega = 0;
-            phasePoints = []; // Clear phase portrait history
-            drawPhasePortraitAxes(); // Redraw empty axes
+            currentTrajectory = []; // Start a new empty trajectory for the next run
+            allPhaseTrajectories.push(currentTrajectory); // Add this new empty trajectory to the collection
+
             updatePendulumGeometry();
             updateDynamicFormulas();
-            renderer.render(scene, camera);
+            drawPhasePortrait(); // Redraw with new empty current trajectory, but old ones visible.
         }
 
         /**
@@ -786,11 +840,16 @@
          */
         function resetControlEffect() {
             omega = 0; // Stop any current motion due to control
-            // You might want to also bring theta to 0 for a full reset, but for "control reset", just stopping the applied force is enough.
         }
 
         startButton.addEventListener('click', () => {
             if (!isRunning) {
+                // If starting a fresh run (not resuming a paused one)
+                // Ensure currentTrajectory is the last one in allPhaseTrajectories
+                if (allPhaseTrajectories.length === 0 || allPhaseTrajectories[allPhaseTrajectories.length - 1] !== currentTrajectory) {
+                     currentTrajectory = []; // Ensure a truly new trajectory if not already set
+                     allPhaseTrajectories.push(currentTrajectory); // Add new trajectory to the collection
+                }
                 isRunning = true;
                 animate();
             }
@@ -809,8 +868,12 @@
         });
 
         clearPhasePortraitButton.addEventListener('click', () => {
-            phasePoints = [];
-            drawPhasePortraitAxes();
+            allPhaseTrajectories = []; // Clear all historical trajectories
+            currentTrajectory = [];    // Also clear the current one
+            // Re-add an empty trajectory for the next run, so the first 'Start' works as expected
+            allPhaseTrajectories.push(currentTrajectory);
+            drawPhasePortraitAxes(); // Redraw empty axes
+            drawPhasePortrait(); // Ensure no lines are drawn
         });
 
         applyControlForceButton.addEventListener('click', applyControlForce);
@@ -821,7 +884,9 @@
         lengthSlider.addEventListener('input', (e) => {
             L = parseFloat(e.target.value);
             lengthValue.textContent = `${L.toFixed(1)} m`;
-            resetPendulum(); // Reset to apply new length visually
+            // Reset to apply new length visually and start a new trajectory
+            stopButton.click(); // Stop current animation
+            resetPendulum();
         });
 
         massSlider.addEventListener('input', (e) => {
@@ -833,7 +898,9 @@
         gravitySlider.addEventListener('input', (e) => {
             g = parseFloat(e.target.value);
             gravityValue.textContent = `${g.toFixed(2)} m/s²`;
-            resetPendulum(); // Reset to apply new gravity visually
+            // Reset to apply new gravity visually and start a new trajectory
+            stopButton.click(); // Stop current animation
+            resetPendulum();
         });
 
         initialAngleSlider.addEventListener('input', (e) => {
@@ -841,11 +908,10 @@
             initialAngleValue.textContent = `${angleDeg}°`;
             theta = angleDeg * Math.PI / 180; // Update current angle for immediate visual feedback
             omega = 0; // Reset velocity when changing initial angle
-            phasePoints = []; // Clear phase portrait to start new trajectory
-            updatePendulumGeometry();
-            updateDynamicFormulas();
-            drawPhasePortraitAxes();
-            renderer.render(scene, camera); // Render immediately
+            
+            // Clear current trajectory and prepare for a new one
+            stopButton.click(); // Stop current animation
+            resetPendulum(); // This will clear currentTrajectory and prepare a new one
         });
 
         dampingSlider.addEventListener('input', (e) => {
@@ -889,8 +955,8 @@
             phasePortraitCanvas.width = phasePortraitCanvas.clientWidth * dpr;
             phasePortraitCanvas.height = phasePortraitCanvas.clientHeight * dpr;
             phasePortraitCtx.scale(dpr, dpr);
-            drawPhasePortraitAxes(); // Redraw axes and path
-            drawPhasePortrait();
+            drawPhasePortraitAxes(); // Redraw axes and grid
+            drawPhasePortrait(); // Redraw all trajectories
         });
 
         // --- Initial Setup on Window Load ---
@@ -911,6 +977,9 @@
             dampingValue.textContent = `${damping.toFixed(2)}`;
 
             updateDynamicFormulas(); // Populate initial formulas
+            // On initial load, create the first trajectory
+            currentTrajectory = [];
+            allPhaseTrajectories.push(currentTrajectory);
             resetPendulum(); // Ensure initial state is rendered correctly
         };
     </script>
